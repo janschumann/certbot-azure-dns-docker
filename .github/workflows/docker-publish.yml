@@ -97,9 +97,12 @@ jobs:
         run: |
           IS_TAG="${{ startsWith(github.ref, 'refs/tags/v') }}"
           if [ "$IS_TAG" = "true" ]; then
+            # For tag builds: read from registry cache, write inline cache (embedded in image)
+            # Inline cache avoids separate registry write operations that can cause 502 errors
             echo "cache_from=type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }}" >> $GITHUB_OUTPUT
-            echo "cache_to=type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }},mode=max" >> $GITHUB_OUTPUT
+            echo "cache_to=type=inline" >> $GITHUB_OUTPUT
           else
+            # For non-tag builds: use GitHub Actions cache
             echo "cache_from=type=gha" >> $GITHUB_OUTPUT
             echo "cache_to=type=gha,mode=max" >> $GITHUB_OUTPUT
           fi
