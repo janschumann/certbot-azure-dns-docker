@@ -132,21 +132,19 @@ When Certbot or plugins are updated, new version combinations are added to the b
 
 This project uses GitHub Actions to automatically build and push Docker images:
 
-**Build behavior:**
-- All pushes to `main` branch trigger builds for all matrix combinations (to verify everything works)
-- Pull requests trigger builds for all matrix combinations (no push)
-- Builds verify that all version combinations compile successfully
+**Automated builds:**
+- **Pushes to `main` branch**: Build all matrix combinations and push images to Docker Hub
+- **Pull requests**: Build all matrix combinations for testing (no push to Docker Hub)
+- All builds verify that version combinations compile successfully
 
-**Push behavior:**
-- Only tag builds (tags starting with `v*`) trigger pushes to Docker Hub
-- Regular pushes to `main` build but do not push (ensures only tagged releases are published)
-
-**Available tags per build:**
-Each versioned build creates multiple tags:
-- Exact version: `5.1.0`
-- With plugin version: `5.1.0-azure2.6.1`
-- Full specification: `5.1.0-azure2.6.1-azmgmt8.2.0`
-- Version aliases: `5.1`, `5` (point to latest in that range)
+**Docker Hub integration:**
+- Images are automatically built and pushed on every push or merge to `main`
+- The README is automatically synced to Docker Hub as the repository description
+- Each versioned build creates multiple tags:
+  - Exact version: `5.1.0`
+  - With plugin version: `5.1.0-azure2.6.1`
+  - Full specification: `5.1.0-azure2.6.1-azmgmt8.2.0`
+  - Version aliases: `5.1`, `5` (point to latest in that range)
 
 ### Setting up GitHub Secrets
 
