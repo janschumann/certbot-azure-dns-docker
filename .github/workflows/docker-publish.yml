@@ -92,6 +92,18 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: ${{ steps.version.outputs.tags }}
 
+      - name: Prepare cache configuration
+        id: cache
+        run: |
+          IS_TAG="${{ startsWith(github.ref, 'refs/tags/v') }}"
+          if [ "$IS_TAG" = "true" ]; then
+            echo "cache_from=type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }}" >> $GITHUB_OUTPUT
+            echo "cache_to=type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }},mode=max" >> $GITHUB_OUTPUT
+          else
+            echo "cache_from=type=gha" >> $GITHUB_OUTPUT
+            echo "cache_to=type=gha,mode=max" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -103,5 +115,5 @@ jobs:
             AZURE_MGMT_DNS_VERSION=${{ matrix.azure_mgmt_dns_version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }}
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }},mode=max
+          cache-from: ${{ steps.cache.outputs.cache_from }}
+          cache-to: ${{ steps.cache.outputs.cache_to }}
