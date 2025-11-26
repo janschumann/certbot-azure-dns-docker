@@ -148,6 +148,25 @@ Each versioned build creates multiple tags:
 - Full specification: `5.1.0-azure2.6.1-azmgmt8.2.0`
 - Version aliases: `5.1`, `5` (point to latest in that range)
 
+### Setting up GitHub Secrets
+
+To enable Docker Hub pushes, you need to configure GitHub secrets with a Docker Hub Personal Access Token (PAT):
+
+1. **Create a Docker Hub Personal Access Token:**
+   - Go to [Docker Hub Account Settings](https://hub.docker.com/settings/security)
+   - Click "New Access Token"
+   - Give it a name (e.g., "github-actions")
+   - Set permissions to "Read, Write, Delete" (or at least "Read, Write")
+   - Copy the token (you won't be able to see it again)
+
+2. **Add GitHub Secrets:**
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add the following secrets:
+     - `DOCKER_USERNAME`: Your Docker Hub username
+     - `DOCKER_PASSWORD`: Your Docker Hub Personal Access Token (not your password)
+
+**Note:** Docker Hub requires Personal Access Tokens (PAT) for API access. Regular passwords will not work.
+
 ## Requirements
 
 To use the Azure DNS plugin, you need:
