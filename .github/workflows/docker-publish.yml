@@ -1,0 +1,107 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  
+env:
+  IMAGE_NAME: janschumann/certbot-azure-dns
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Latest variant (unpinned)
+          - certbot_version: latest
+            certbot_dns_azure_version: ""
+            azure_mgmt_dns_version: ""
+          
+          # Versioned variants
+          - certbot_version: v5.1.0
+            certbot_dns_azure_version: "2.6.1"
+            azure_mgmt_dns_version: "8.2.0"
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Prepare version info and tags
+        id: version
+        run: |
+          CERTBOT_VERSION="${{ matrix.certbot_version }}"
+          CERTBOT_DNS_AZURE_VERSION="${{ matrix.certbot_dns_azure_version }}"
+          AZURE_MGMT_DNS_VERSION="${{ matrix.azure_mgmt_dns_version }}"
+          
+          TAG_LIST_FILE=$(mktemp)
+          
+          if [ "$CERTBOT_VERSION" = "latest" ]; then
+            echo "type=raw,value=latest" >> "$TAG_LIST_FILE"
+          else
+            VERSION="${CERTBOT_VERSION#v}"
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f1,2)
+            
+            # Base version tag
+            echo "type=raw,value=$VERSION" >> "$TAG_LIST_FILE"
+            
+            # Plugin-specific tags
+            if [ -n "$CERTBOT_DNS_AZURE_VERSION" ]; then
+              echo "type=raw,value=$VERSION-azure$CERTBOT_DNS_AZURE_VERSION" >> "$TAG_LIST_FILE"
+              
+              if [ -n "$AZURE_MGMT_DNS_VERSION" ]; then
+                echo "type=raw,value=$VERSION-azure$CERTBOT_DNS_AZURE_VERSION-azmgmt$AZURE_MGMT_DNS_VERSION" >> "$TAG_LIST_FILE"
+              fi
+            fi
+            
+            # Major.minor and major version tags
+            echo "type=raw,value=$MINOR" >> "$TAG_LIST_FILE"
+            echo "type=raw,value=$MAJOR" >> "$TAG_LIST_FILE"
+          fi
+          
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          cat "$TAG_LIST_FILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: ${{ steps.version.outputs.tags }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          build-args: |
+            CERTBOT_VERSION=${{ matrix.certbot_version }}
+            CERTBOT_DNS_AZURE_VERSION=${{ matrix.certbot_dns_azure_version }}
+            AZURE_MGMT_DNS_VERSION=${{ matrix.azure_mgmt_dns_version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }}
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ matrix.certbot_version }},mode=max

@@ -1,0 +1,9 @@
+ARG CERTBOT_VERSION=latest
+ARG CERTBOT_DNS_AZURE_VERSION=
+ARG AZURE_MGMT_DNS_VERSION=
+
+FROM certbot/certbot:${CERTBOT_VERSION}
+
+RUN pip install --no-cache-dir \
+    certbot-dns-azure${CERTBOT_DNS_AZURE_VERSION:+==${CERTBOT_DNS_AZURE_VERSION}} \
+    azure-mgmt-dns${AZURE_MGMT_DNS_VERSION:+==${AZURE_MGMT_DNS_VERSION}}
